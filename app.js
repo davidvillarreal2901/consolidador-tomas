@@ -1,4 +1,4 @@
-import {readExcel, compare, consolidate, makeOutput, name, safeText, dateKey} from './engine.js';
+import {readExcel, compare, consolidate, makeOutput, name, safeText, dateKey} from './engine.js?v=20260923-2';
 
 const $=id=>document.getElementById(id);
 let state, result;

@@ -2,6 +2,8 @@
 
 Página web estática para juntar dos archivos del formato de captura antropométrica de Pardo Rubio. Funciona en el navegador con JSZip incluido en `vendor/`: los Excel y los datos personales nunca se envían a un servidor.
 
+Si después de subir una actualización aparece un mensaje de una versión anterior, verifica que `index.html`, `app.js` y `engine.js` se hayan enviado juntos. El identificador de versión en las rutas de los scripts hace que el navegador descargue el código actualizado.
+
 ## Uso
 
 1. Abrir la página publicada y seleccionar el archivo anterior y el actual. Para probarla en el computador antes de publicarla, ejecutar `python3 -m http.server 8000` dentro de esta carpeta y abrir `http://localhost:8000`.
