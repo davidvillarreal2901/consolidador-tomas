@@ -22,7 +22,7 @@
         <label class="drop"><span class="badge">TOMA ANTERIOR</span><strong>Archivo de partida</strong><span id="prev-name" class="file-label">Seleccionar Excel</span><input id="previous" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
         <label class="drop"><span class="badge">TOMA ACTUAL</span><strong>Archivo más reciente</strong><span id="curr-name" class="file-label">Seleccionar Excel</span><input id="current" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
       </div>
-      <p class="hint">Se leen las hojas «Formato captura», filas 16–35. Los registros sin identificación y los duplicados se revisan antes de exportar.</p>
+      <p class="hint">Se leen todas las hojas excepto «Instrucciones», filas 16–35. Los registros sin identificación y los duplicados se revisan antes de exportar.</p>
       <button id="process" class="primary" type="button">Comparar archivos <span aria-hidden="true">→</span></button>
       <div id="error" class="error" role="alert" hidden></div>
     </section>

@@ -43,6 +43,8 @@ const key = x => safeText(x).replace(/\s+/g, ' ').toLocaleUpperCase('es-CO');
 const docKey = x => safeText(x).replace(/[\s.\-]/g, '').toUpperCase();
 const name = x => `${safeText(x.values[3])} ${safeText(x.values[4])}`.trim();
 const identity = x => `${key(x.values[3])}|${key(x.values[4])}|${dateKey(x.values[6])}`;
+const firstName = x => key(x.values[3]).split(' ')[0];
+const isInstructions = title => /^instruc+iones$/i.test(key(title).normalize('NFD').replace(/[\u0300-\u036f\s]/g,''));
 
 async function loadXml(zip, path) {
   const entry = zip.file(path);
@@ -69,14 +71,14 @@ export async function readExcel(file) {
   };
   for (const node of children(first(book.documentElement, 'sheets'), 'sheet')) {
     const title = node.getAttribute('name');
-    if (!/^Formato captura(?:\s*\(\d+\))?$/i.test(title)) continue;
+    if (isInstructions(title)) continue;
     const target = map.get(node.getAttributeNS(R, 'id'));
     if (!target) throw Error(`La hoja ${title} no tiene relación en el libro.`);
     const path = 'xl/' + target.replace(/^\/?xl\//, '').replace(/^\//, '');
     const doc = await loadXml(zip, path);
     sheets.push({node, doc, path, title});
   }
-  if (!sheets.length) throw Error('No se encontraron hojas «Formato captura» en el Excel.');
+  if (!sheets.length) throw Error('No se encontraron hojas con registros en el Excel.');
   const rows = [];
   for (const sheet of sheets) {
     const data = first(sheet.doc.documentElement, 'sheetData');
@@ -151,7 +153,7 @@ export function consolidate(state) {
     } else rows.push({status:'NUEVO',person:newRow,first:newRow,second:null});
   }
   for (let j = 0; j < state.previous.rows.length; j++) if (!claimed.has(j)) rows.push({status:'EGRESO',person:state.previous.rows[j],first:state.previous.rows[j],second:null});
-  rows.sort((a,b) => key(a.person.values[4]).localeCompare(key(b.person.values[4]),'es') || key(a.person.values[3]).localeCompare(key(b.person.values[3]),'es') || docKey(a.person.values[2]).localeCompare(docKey(b.person.values[2]),'es'));
+  rows.sort((a,b) => firstName(a.person).localeCompare(firstName(b.person),'es') || key(a.person.values[3]).localeCompare(key(b.person.values[3]),'es') || key(a.person.values[4]).localeCompare(key(b.person.values[4]),'es') || docKey(a.person.values[2]).localeCompare(docKey(b.person.values[2]),'es'));
   return rows;
 }
 function hasMeasurement(row, start) { return Array.from({length:12},(_,n) => safeText(row.values[start+n])).some(Boolean); }
@@ -212,6 +214,7 @@ export async function makeOutput(state, consolidated) {
   let nextRel = Math.max(0,...existingIds.map(s=>Number(s.match(/\d+$/)?.[0]||0)))+1;
   let nextSheet = Math.max(0,...children(listed,'sheet').map(s=>Number(s.getAttribute('sheetId')||0)))+1;
   let nextFile = Math.max(0,...Object.keys(zip.files).map(s=>Number(s.match(/^xl\/worksheets\/sheet(\d+)\.xml$/)?.[1]||0)))+1;
+  const existingNames = new Set(children(listed,'sheet').map(s=>s.getAttribute('name').toLocaleLowerCase('es-CO')));
   const originalCount = sheets.length;
   let lastNode=sheets[originalCount-1].node;
   for (let i=0;i<copies;i++) {
@@ -219,7 +222,10 @@ export async function makeOutput(state, consolidated) {
     if (i<originalCount) sheet=sheets[i];
     else {
       const base = sheets[originalCount-1], fileNum=nextFile++, path=`xl/worksheets/sheet${fileNum}.xml`;
-      const title=`Formato captura (${i+1})`;
+      const baseTitle=`Consolidado ${i+1}`;
+      let title=baseTitle, suffix=2;
+      while(existingNames.has(title.toLocaleLowerCase('es-CO'))) title=`${baseTitle} (${suffix++})`;
+      existingNames.add(title.toLocaleLowerCase('es-CO'));
       const cloned=xml(serializer.serializeToString(base.doc));
       const node=book.createElementNS(M,'sheet'); node.setAttribute('name',title); node.setAttribute('sheetId',String(nextSheet++));node.setAttributeNS(R,'r:id',`rId${nextRel}`);
       listed.insertBefore(node,lastNode.nextSibling);lastNode=node;

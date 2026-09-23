@@ -14,10 +14,11 @@ Crear un repositorio nuevo (público en GitHub Free). Subir **los archivos de es
 
 ## Reglas
 
-- Solo se leen hojas cuyo nombre comienza con `Formato captura`, registros en filas 16–35 y campos A:AE. La hoja `Instruccciones` no aporta niños.
+- Se leen todas las hojas excepto `Instrucciones` (también se reconoce la grafía `Instruccciones`), registros en filas 16–35 y campos A:AE. El nombre de las hojas de datos puede variar.
 - Coincidencia automática: NUIP único y nombres, apellidos y fecha de nacimiento presentes e iguales tras normalizar mayúsculas y espacios. Cualquier duda exige elección manual. La página propone candidatos por documento o identidad y muestra también todas las personas anteriores sin asignar.
 - Continuidad: conserva Toma 1 anterior; usa Toma 2 actual (T:AE) si viene diligenciada, o bien la medición actual (H:S) como Toma 2. Datos personales: toma los del archivo actual.
 - Nuevo: datos y Toma 1 del archivo actual (H:S). Egreso: datos y Toma 1 del anterior; `EGRESO` en la fecha de Toma 2, columna T.
+- El resultado se ordena por el **primer nombre** (primera palabra de la columna NOMBRES); si coincide, se desempata con el nombre completo, los apellidos y el documento.
 - El formato de salida se basa en el archivo **actual**, conservando encabezados, estilos, instrucciones y el resto de la plantilla. Hojas de captura adicionales se crean automáticamente cuando son necesarias; las hojas vacías sobrantes se retiran. Los campos auxiliares fuera de A:AE no pasan al formato.
 - Si dos personas comparten documento en cualquiera de los archivos, la asignación deja de ser automática. No se permite que una persona anterior se use más de una vez.
 
