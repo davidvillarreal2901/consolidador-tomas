@@ -23,6 +23,7 @@ Crear un repositorio nuevo (público en GitHub Free). Subir **los archivos de es
 - Nuevo: datos y Toma 1 del archivo actual (H:S). Egreso: datos y Toma 1 del anterior; `EGRESO` en la fecha de Toma 2, columna T.
 - El resultado se ordena por el **primer nombre** (primera palabra de la columna NOMBRES); si coincide, se desempata con el nombre completo, los apellidos y el documento.
 - El formato de salida se basa en el archivo **actual**, conservando encabezados, estilos, instrucciones y el resto de la plantilla. Hojas de captura adicionales se crean automáticamente cuando son necesarias; las hojas vacías sobrantes se retiran. Los campos auxiliares fuera de A:AE no pasan al formato.
+- Algunas plantillas contienen tablas internas de Excel con rangos y encabezados fijos. El archivo exportado retira únicamente esas definiciones de tabla para evitar que Excel solicite repararlo después de reorganizar los niños. Se conservan las celdas, los estilos y las hojas de instrucciones.
 - Si dos personas comparten documento en cualquiera de los archivos, la asignación deja de ser automática. No se permite que una persona anterior se use más de una vez.
 
 **Nota:** La marca `EGRESO` refleja la ausencia en el archivo actual; conviene comprobar que este archivo incluya todas las hojas y todos los niños del periodo.

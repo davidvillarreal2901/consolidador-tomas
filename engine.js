@@ -274,6 +274,26 @@ function putRow(doc, n, item, position, dateStyles) {
   }
 }
 
+async function detachSourceTables(sheet,zip,types){
+  // The template's table definitions refer to its original header and row range.
+  // Keeping them after rearranging rows makes Excel repair the workbook on open.
+  const relationshipPath=sheet.path.replace('/worksheets/','/worksheets/_rels/')+'.rels';
+  if(zip.file(relationshipPath)){
+    const rels=await loadXml(zip,relationshipPath);
+    for(const rel of children(rels.documentElement,'Relationship')){
+      if(!rel.getAttribute('Type')?.endsWith('/table'))continue;
+      const target=new URL(rel.getAttribute('Target'),'https://xlsx.local/'+sheet.path).pathname.slice(1);
+      zip.remove(target);
+      for(const override of children(types.documentElement,'Override')){
+        if(override.getAttribute('PartName')==='/'+target)types.documentElement.removeChild(override);
+      }
+      rels.documentElement.removeChild(rel);
+    }
+    zip.file(relationshipPath,serializer.serializeToString(rels));
+  }
+  for(const part of children(sheet.doc.documentElement,'tableParts'))sheet.doc.documentElement.removeChild(part);
+}
+
 export async function makeOutput(state, consolidated) {
   // Start from a fresh copy so the user can download again without accumulating edits.
   const {zip,book,rels,sheets,dateStyles} = await readExcel(state.current.file);
@@ -282,6 +302,7 @@ export async function makeOutput(state, consolidated) {
   const listed = first(book.documentElement,'sheets');
   const relRoot = rels.documentElement;
   const types = await loadXml(zip,'[Content_Types].xml');
+  for(const sheet of sheets)await detachSourceTables(sheet,zip,types);
   const existingIds = children(relRoot,'Relationship').map(r=>r.getAttribute('Id'));
   let nextRel = Math.max(0,...existingIds.map(s=>Number(s.match(/\d+$/)?.[0]||0)))+1;
   let nextSheet = Math.max(0,...children(listed,'sheet').map(s=>Number(s.getAttribute('sheetId')||0)))+1;
