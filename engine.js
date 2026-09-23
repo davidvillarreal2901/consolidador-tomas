@@ -166,13 +166,30 @@ export function consolidate(state) {
     if (oldIndex !== undefined && oldIndex !== null && oldIndex !== '') {
       if (claimed.has(Number(oldIndex))) throw Error('Una persona anterior fue asignada dos veces. Revisa las coincidencias.');
       claimed.add(Number(oldIndex));
-      rows.push({status:'CONTINÚA', person:newRow, first:state.previous.rows[Number(oldIndex)], second:newRow, secondStart:hasMeasurement(newRow,20) ? 20 : 8});
+      const first=state.previous.rows[Number(oldIndex)];
+      const secondStart=hasMeasurement(newRow,20) ? 20 : 8;
+      rows.push({status:'CONTINÚA', person:newRow, first, second:sameMeasurement(first,newRow,secondStart)?null:newRow, secondStart});
     } else rows.push({status:'NUEVO',person:newRow,first:newRow,second:null});
   }
   for (let j = 0; j < state.previous.rows.length; j++) if (!claimed.has(j)) rows.push({status:'EGRESO',person:state.previous.rows[j],first:state.previous.rows[j],second:null});
   return sortConsolidated(rows);
 }
 function hasMeasurement(row, start) { return Array.from({length:12},(_,n) => safeText(row.values[start+n])).some(Boolean); }
+
+function sameMeasurement(first, current, start) {
+  // An undiligenced field in the recent file cannot erase a value in Toma 1.
+  // Compare every value that was actually entered, including the date and measurements.
+  if (!hasMeasurement(current,start)) return true;
+  return Array.from({length:12},(_,n) => {
+    const newer=safeText(current.values[start+n]), older=safeText(first.values[8+n]);
+    if (!newer) return true;
+    if (!older) return false;
+    if (n===0) return dateKey(newer)===dateKey(older);
+    const number=x=>/^-?\d+(?:[.,]\d+)?$/.test(x)?Number(x.replace(',','.')):null;
+    const a=number(newer),b=number(older);
+    return a!==null&&b!==null ? a===b : key(newer)===key(older);
+  }).every(Boolean);
+}
 
 export function outputValue(item,c) {
   if(Object.prototype.hasOwnProperty.call(item.overrides||{},c))return item.overrides[c];

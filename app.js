@@ -1,4 +1,4 @@
-import {readExcel, compare, consolidate, makeOutput, outputValue, sortConsolidated, pagePlan, name, safeText, dateKey} from './engine.js?v=20260923-4';
+import {readExcel, compare, consolidate, makeOutput, outputValue, sortConsolidated, pagePlan, name, safeText, dateKey} from './engine.js?v=20260923-5';
 
 const $=id=>document.getElementById(id);
 let state, result, editingIndex=null;
@@ -31,7 +31,7 @@ $('process').addEventListener('click',async()=>{
 function renderReview(){
   const auto=state.automatic.size,needs=state.reviews.length;
   $('stats').innerHTML=`<div class="stat"><b>${state.previous.rows.length}</b><span>En el anterior</span></div><div class="stat"><b>${state.current.rows.length}</b><span>En el actual</span></div><div class="stat"><b>${auto}</b><span>Coincidencias seguras</span></div><div class="stat"><b>${needs}</b><span>Por revisar</span></div>`;
-  const messages=['Se ignora por completo la Toma 2 del archivo anterior. Solo se usa para Toma 2 la medición del archivo actual cuando corresponde.','La ausencia en el archivo actual se marcará como EGRESO; comprueba que hayas subido todas las páginas.'];
+  const messages=['Se ignora por completo la Toma 2 del archivo anterior. Si la medición actual repite la anterior, Toma 2 queda vacía.','La ausencia en el archivo actual se marcará como EGRESO; comprueba que hayas subido todas las páginas.'];
   $('warnings').innerHTML=messages.map(esc).join('<br>');$('warnings').hidden=false;
   if(!needs){$('reviews').innerHTML='<p>No hay coincidencias dudosas. Revisa el consolidado.</p>';return;}
   $('reviews').innerHTML=`<h3>${needs} caso(s) para decidir</h3>`+state.reviews.map(({index,ranked,reason})=>{
