@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173d3c">
+  <title>Consolidador de tomas · Pardo Rubio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div class="eyebrow">HERRAMIENTA LOCAL · EXCEL</div>
+      <h1>De dos listados a uno solo.</h1>
+      <p>Carga las tomas, revisa las coincidencias dudosas y descarga el formato organizado en hojas de 20 niños.</p>
+      <div class="privacy">Los archivos se procesan en este navegador. No se envían a un servidor.</div>
+    </header>
+
+    <section class="panel" aria-labelledby="upload-title">
+      <div class="section-head"><span class="step">01</span><div><h2 id="upload-title">Subir archivos</h2><p>Selecciona los archivos originales .xlsx. Puedes cambiarlos y volver a procesar.</p></div></div>
+      <div class="upload-grid">
+        <label class="drop"><span class="badge">TOMA ANTERIOR</span><strong>Archivo de partida</strong><span id="prev-name" class="file-label">Seleccionar Excel</span><input id="previous" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+        <label class="drop"><span class="badge">TOMA ACTUAL</span><strong>Archivo más reciente</strong><span id="curr-name" class="file-label">Seleccionar Excel</span><input id="current" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+      </div>
+      <p class="hint">Se leen las hojas «Formato captura», filas 16–35. Los registros sin identificación y los duplicados se revisan antes de exportar.</p>
+      <button id="process" class="primary" type="button">Comparar archivos <span aria-hidden="true">→</span></button>
+      <div id="error" class="error" role="alert" hidden></div>
+    </section>
+
+    <section id="results" class="panel" aria-labelledby="results-title" hidden>
+      <div class="section-head"><span class="step">02</span><div><h2 id="results-title">Revisar coincidencias</h2><p>Una coincidencia automática exige documento, nombres, apellidos y fecha de nacimiento iguales en ambos archivos.</p></div></div>
+      <div id="stats" class="stats"></div>
+      <div id="warnings" class="warnings" hidden></div>
+      <div id="reviews"></div>
+      <div class="footnote">Para cada caso dudoso, elige una persona del archivo anterior o «Nuevo ingreso». Una persona anterior solo puede asignarse una vez. Quien quede sin pareja conserva su Toma 1 y tendrá <b>EGRESO</b> en Toma 2.</div>
+      <button id="preview-button" class="secondary" type="button">Ver consolidado</button>
+    </section>
+
+    <section id="output" class="panel" aria-labelledby="output-title" hidden>
+      <div class="section-head"><span class="step">03</span><div><h2 id="output-title">Consolidado listo</h2><p id="summary"></p></div></div>
+      <div class="table-scroll"><table><thead><tr><th>Estado</th><th>Niño o niña</th><th>Documento</th><th>Toma 1</th><th>Toma 2</th></tr></thead><tbody id="preview"></tbody></table></div>
+      <button id="download" class="primary" type="button">Descargar Excel consolidado <span aria-hidden="true">↓</span></button>
+      <p class="hint">El archivo conserva el formato institucional y sus encabezados; cada hoja de captura contiene hasta 20 registros.</p>
+    </section>
+    <footer>Consolidador de tomas · Funciona sin conexión después de cargar la página.</footer>
+  </main>
+  <script src="vendor/jszip.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
