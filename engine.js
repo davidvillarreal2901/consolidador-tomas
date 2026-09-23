@@ -45,6 +45,20 @@ const name = x => `${safeText(x.values[3])} ${safeText(x.values[4])}`.trim();
 const identity = x => `${key(x.values[3])}|${key(x.values[4])}|${dateKey(x.values[6])}`;
 const firstName = x => key(x.values[3]).split(' ')[0];
 const isInstructions = title => /^instruc+iones$/i.test(key(title).normalize('NFD').replace(/[\u0300-\u036f\s]/g,''));
+const isOrder = v => /^\d{1,5}$/.test(safeText(v)) && Number(v)>=1;
+
+function sheetLayout(doc, strings) {
+  const rows=children(first(doc.documentElement,'sheetData'),'row');
+  const at=(row,c)=>cellValue(children(row,'c').find(x=>x.getAttribute('r')===addr(c,Number(row.getAttribute('r')))),strings);
+  const header=rows.find(row=>/NO\.?\s*DE\s*ORDEN/i.test(safeText(at(row,1))))?.getAttribute('r');
+  const headerRow=Number(header)||14;
+  const firstNumber=rows.find(row=>Number(row.getAttribute('r'))>headerRow && Number(row.getAttribute('r'))<=headerRow+5 && isOrder(at(row,1)));
+  const start=firstNumber?Number(firstNumber.getAttribute('r')):headerRow+2;
+  const note=rows.find(row=>Number(row.getAttribute('r'))>=start && Number(row.getAttribute('r'))<=start+20 && /^NOTAS?\s*:/i.test(key(at(row,1))));
+  const capacity=Math.min(20,(note?Number(note.getAttribute('r')):start+20)-start);
+  if(capacity<1)throw Error('La hoja no tiene espacio para registros de niños.');
+  return {headerRow,start,capacity};
+}
 
 async function loadXml(zip, path) {
   const entry = zip.file(path);
@@ -76,7 +90,7 @@ export async function readExcel(file) {
     if (!target) throw Error(`La hoja ${title} no tiene relación en el libro.`);
     const path = 'xl/' + target.replace(/^\/?xl\//, '').replace(/^\//, '');
     const doc = await loadXml(zip, path);
-    sheets.push({node, doc, path, title});
+    sheets.push({node, doc, path, title, layout:sheetLayout(doc,strings)});
   }
   if (!sheets.length) throw Error('No se encontraron hojas con registros en el Excel.');
   const rows = [];
@@ -84,13 +98,15 @@ export async function readExcel(file) {
     const data = first(sheet.doc.documentElement, 'sheetData');
     for (const row of children(data, 'row')) {
       const number = Number(row.getAttribute('r'));
-      if (number < 16 || number > 35) continue;
+      if (number < sheet.layout.start || number >= sheet.layout.start+sheet.layout.capacity) continue;
       const cells = {};
       const values = {};
       for (const cell of children(row, 'c')) {
         const n = col((cell.getAttribute('r') || '').match(/^[A-Z]+/)?.[0] || '');
         if (n >= 1 && n <= 33) { cells[n] = cell; values[n] = cellValue(cell, strings); }
       }
+      const plausibleName=Boolean(safeText(values[3])||safeText(values[4]));
+      if (!isOrder(values[1]) && !(plausibleName && safeText(values[2]).length<=25)) continue;
       if (![2, 3, 4].some(n => safeText(values[n]))) continue;
       rows.push({id: `${sheet.title}!${number}`, sheet, row: number, cells, values});
     }
@@ -98,7 +114,7 @@ export async function readExcel(file) {
   const dateStyles={};
   for(const c of [6,7,8,20]) {
     for(const sheet of sheets) {
-      for(let n=16;n<=35;n++) {
+      for(let n=sheet.layout.start;n<sheet.layout.start+sheet.layout.capacity;n++) {
         const cell=children(getRow(sheet.doc,n),'c').find(x=>x.getAttribute('r')===addr(c,n));
         if(cell && isDateStyle(cell.getAttribute('s'))) {dateStyles[c]=cell.getAttribute('s');break;}
       }
@@ -128,12 +144,13 @@ export function compare(previous, current) {
   for (let i = 0; i < news.length; i++) {
     const b = news[i], doc = docKey(b.values[2]);
     const ranked = olds.map((a, j) => ({j, score:score(a,b)})).filter(x => x.score).sort((a,b) => b.score - a.score);
-    const exact = ranked.filter(x => x.score === 100 && identity(olds[x.j]) === identity(b) && key(b.values[3]) && key(b.values[4]) && dateKey(b.values[6]));
+    const exact = ranked.filter(x => x.score === 100 && identity(olds[x.j]) === identity(b) && key(b.values[3]) && key(b.values[4]) && dateKey(b.values[6]) && isOrder(b.values[1]) && isOrder(olds[x.j].values[1]));
     if (doc && newCount.get(doc) === 1 && oldCount.get(doc) === 1 && exact.length === 1 && !used.has(exact[0].j)) {
       automatic.set(i, exact[0].j); used.add(exact[0].j);
-    } else if (ranked.length || !doc || !key(b.values[3]) || !key(b.values[4]) || !dateKey(b.values[6])) {
+    } else if (ranked.length || !doc || !key(b.values[3]) || !key(b.values[4]) || !dateKey(b.values[6]) || !isOrder(b.values[1])) {
       let reason = ranked.length ? (ranked[0].score === 100 ? 'Mismo documento, pero datos personales distintos o repetidos.' : 'Posible coincidencia sin documento idéntico.') : 'Faltan datos de identificación; confirma si es un ingreso.';
       if (doc && newCount.get(doc) > 1) reason = 'Documento repetido en el archivo actual; revisa ambas filas.';
+      if (!isOrder(b.values[1])) reason = 'El número de orden no corresponde a una fila de niño; revisa la fila de origen.';
       reviews.push({index:i, ranked, reason});
     }
   }
@@ -153,10 +170,39 @@ export function consolidate(state) {
     } else rows.push({status:'NUEVO',person:newRow,first:newRow,second:null});
   }
   for (let j = 0; j < state.previous.rows.length; j++) if (!claimed.has(j)) rows.push({status:'EGRESO',person:state.previous.rows[j],first:state.previous.rows[j],second:null});
-  rows.sort((a,b) => firstName(a.person).localeCompare(firstName(b.person),'es') || key(a.person.values[3]).localeCompare(key(b.person.values[3]),'es') || key(a.person.values[4]).localeCompare(key(b.person.values[4]),'es') || docKey(a.person.values[2]).localeCompare(docKey(b.person.values[2]),'es'));
-  return rows;
+  return sortConsolidated(rows);
 }
 function hasMeasurement(row, start) { return Array.from({length:12},(_,n) => safeText(row.values[start+n])).some(Boolean); }
+
+export function outputValue(item,c) {
+  if(Object.prototype.hasOwnProperty.call(item.overrides||{},c))return item.overrides[c];
+  if(c<=7)return item.person.values[c]??'';
+  if(c<=19)return item.first.values[c]??'';
+  if(item.status==='EGRESO')return c===20?'EGRESO':'';
+  if(!item.second)return '';
+  return item.second.values[item.secondStart+c-20]??'';
+}
+
+export function sortConsolidated(rows) {
+  const given=item=>key(outputValue(item,3));
+  rows.sort((a,b)=>given(a).split(' ')[0].localeCompare(given(b).split(' ')[0],'es') || given(a).localeCompare(given(b),'es') || key(outputValue(a,4)).localeCompare(key(outputValue(b,4)),'es') || docKey(outputValue(a,2)).localeCompare(docKey(outputValue(b,2)),'es'));
+  return rows;
+}
+
+export function pagePlan(current,count) {
+  const sheets=current.sheets;
+  const fullest=sheets.reduce((a,b)=>b.layout.capacity>a.layout.capacity?b:a);
+  const plan=[];
+  let remaining=count;
+  do {
+    const existing=sheets[plan.length];
+    const template=existing && (existing.layout.capacity>=Math.min(20,remaining)||existing.layout.capacity>=fullest.layout.capacity)?existing:fullest;
+    const take=Math.min(remaining,template.layout.capacity);
+    plan.push({template,replaceExisting:Boolean(existing&&existing!==template),take});
+    remaining-=take;
+  }while(remaining>0);
+  return plan;
+}
 
 function getRow(doc, number) {return children(first(doc.documentElement,'sheetData'),'row').find(n => Number(n.getAttribute('r')) === number);}
 function getCell(row, index) {return children(row,'c').find(n => n.getAttribute('r') === addr(index,Number(row.getAttribute('r'))));}
@@ -181,11 +227,32 @@ function setCell(doc, row, index, source, literal) {
   }
 }
 
+function overrideCell(doc,row,c,value,dateStyles){
+  const raw=safeText(value);
+  if(!raw){setCell(doc,row,c,null);return;}
+  let numeric=null;
+  if([6,7,8,20].includes(c)){
+    const d=dateKey(raw),match=d.match(/^(\d{4})-(\d\d)-(\d\d)$/);
+    if(match){
+      const ms=Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3]));
+      if(new Date(ms).toISOString().slice(0,10)===d)numeric=String(ms/86400000+25569);
+    }
+  }else if([9,10,11,13,17,21,22,23,25,29].includes(c)&&/^-?\d+(?:[.,]\d+)?$/.test(raw))numeric=raw.replace(',','.');
+  if(numeric!==null){
+    setCell(doc,row,c,null);
+    const dest=getCell(row,c),v=doc.createElementNS(M,'v');v.textContent=numeric;dest.appendChild(v);
+    if([6,7,8,20].includes(c)){
+      const style=dateStyles[c]??dateStyles.fallback;
+      if(style&&style!=='-1')dest.setAttribute('s',style);
+    }
+  }else setCell(doc,row,c,null,raw);
+}
+
 function putRow(doc, n, item, position, dateStyles) {
   const row = getRow(doc,n);
   if (!row) throw Error(`La plantilla no tiene la fila ${n}.`);
   for (let c=1;c<=31;c++) setCell(doc,row,c,null);
-  setCell(doc,row,1,null,String(position));
+  const ordinal=doc.createElementNS(M,'v');ordinal.textContent=String(position);getCell(row,1).appendChild(ordinal);
   const copy=(c,source,sourceCol) => {
     const from=source.cells[sourceCol];
     if (from?.getAttribute('t')==='s') setCell(doc,row,c,null,String(source.values[sourceCol]??''));
@@ -201,12 +268,17 @@ function putRow(doc, n, item, position, dateStyles) {
   for (let c=8;c<=19;c++) copy(c,item.first,c);
   if (item.status === 'EGRESO') setCell(doc,row,20,null,'EGRESO');
   else if (item.second) for (let c=20;c<=31;c++) copy(c,item.second,item.secondStart+c-20);
+  for(const [column,value] of Object.entries(item.overrides||{})){
+    const c=Number(column);
+    if(c>=2&&c<=31 && !(item.status==='EGRESO'&&c>=20))overrideCell(doc,row,c,value,dateStyles);
+  }
 }
 
 export async function makeOutput(state, consolidated) {
   // Start from a fresh copy so the user can download again without accumulating edits.
   const {zip,book,rels,sheets,dateStyles} = await readExcel(state.current.file);
-  const copies = Math.max(1,Math.ceil(consolidated.length/20));
+  const plans = pagePlan({sheets},consolidated.length);
+  const copies = plans.length;
   const listed = first(book.documentElement,'sheets');
   const relRoot = rels.documentElement;
   const types = await loadXml(zip,'[Content_Types].xml');
@@ -217,32 +289,46 @@ export async function makeOutput(state, consolidated) {
   const existingNames = new Set(children(listed,'sheet').map(s=>s.getAttribute('name').toLocaleLowerCase('es-CO')));
   const originalCount = sheets.length;
   let lastNode=sheets[originalCount-1].node;
+  const originals=new Map(sheets.map(s=>[s.path,serializer.serializeToString(s.doc)]));
+  let offset=0;
   for (let i=0;i<copies;i++) {
+    const plan=plans[i];
     let sheet;
-    if (i<originalCount) sheet=sheets[i];
+    if (i<originalCount) {
+      sheet=sheets[i];
+      if(plan.replaceExisting){
+        sheet.doc=xml(originals.get(plan.template.path));
+        sheet.layout=plan.template.layout;
+      }
+    }
     else {
-      const base = sheets[originalCount-1], fileNum=nextFile++, path=`xl/worksheets/sheet${fileNum}.xml`;
+      const base = plan.template, fileNum=nextFile++, path=`xl/worksheets/sheet${fileNum}.xml`;
       const baseTitle=`Consolidado ${i+1}`;
       let title=baseTitle, suffix=2;
       while(existingNames.has(title.toLocaleLowerCase('es-CO'))) title=`${baseTitle} (${suffix++})`;
       existingNames.add(title.toLocaleLowerCase('es-CO'));
-      const cloned=xml(serializer.serializeToString(base.doc));
+      const cloned=xml(originals.get(base.path));
       const node=book.createElementNS(M,'sheet'); node.setAttribute('name',title); node.setAttribute('sheetId',String(nextSheet++));node.setAttributeNS(R,'r:id',`rId${nextRel}`);
       listed.insertBefore(node,lastNode.nextSibling);lastNode=node;
       const rel=rels.createElementNS(P,'Relationship');rel.setAttribute('Id',`rId${nextRel++}`);rel.setAttribute('Type',R+'/worksheet');rel.setAttribute('Target',`worksheets/sheet${fileNum}.xml`);relRoot.appendChild(rel);
       const override=types.createElementNS(C,'Override');override.setAttribute('PartName','/'+path);override.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml');types.documentElement.appendChild(override);
       const baseRel=base.path.replace('/worksheets/','/worksheets/_rels/')+'.rels';
       if (zip.file(baseRel)) zip.file(`xl/worksheets/_rels/sheet${fileNum}.xml.rels`,await zip.file(baseRel).async('string'));
-      sheet={doc:cloned,node,path,title};
+      sheet={doc:cloned,node,path,title,layout:base.layout};
     }
-    const h=first(sheet.doc.documentElement,'sheetData');
-    const header=getRow(sheet.doc,14);
-    if (header) {setCell(sheet.doc,header,8,null,'TOMA Nº 1');setCell(sheet.doc,header,20,null,'TOMA Nº 2');}
-    for (let j=0;j<20;j++) {
-      const item=consolidated[i*20+j];
-      if (item) putRow(sheet.doc,16+j,item,i*20+j+1,dateStyles);
-      else {const row=getRow(sheet.doc,16+j);if(row)for(let c=1;c<=31;c++)setCell(sheet.doc,row,c,null);}
+    const header=getRow(sheet.doc,sheet.layout.headerRow);
+    if(header){
+      for(const [c,label] of [[8,'TOMA Nº 1'],[20,'TOMA Nº 2']]){
+        if(/TOMA/i.test(cellValue(getCell(header,c),state.current.strings)))setCell(sheet.doc,header,c,null,label);
+      }
     }
+    for (let j=0;j<sheet.layout.capacity;j++) {
+      const item=j<plan.take?consolidated[offset+j]:null;
+      const n=sheet.layout.start+j;
+      if (item) putRow(sheet.doc,n,item,offset+j+1,dateStyles);
+      else {const row=getRow(sheet.doc,n);if(row)for(let c=1;c<=31;c++)setCell(sheet.doc,row,c,null);}
+    }
+    offset+=plan.take;
     zip.file(sheet.path,serializer.serializeToString(sheet.doc));
   }
   for (let i=copies;i<originalCount;i++) {

@@ -7,8 +7,9 @@ Si después de subir una actualización aparece un mensaje de una versión anter
 ## Uso
 
 1. Abrir la página publicada y seleccionar el archivo anterior y el actual. Para probarla en el computador antes de publicarla, ejecutar `python3 -m http.server 8000` dentro de esta carpeta y abrir `http://localhost:8000`.
-2. Pulsar **Comparar archivos**. Las coincidencias inequívocas se asignan automáticamente. Resolver los casos que aparezcan en pantalla; una persona anterior no se puede asignar dos veces.
-3. Pulsar **Ver consolidado** y **Descargar Excel consolidado**. Incluye continuidades, nuevos ingresos y egresos, todos en orden alfabético y con hasta 20 registros en cada hoja institucional.
+2. Pulsar **Comparar archivos**. Las coincidencias inequívocas se asignan automáticamente. Resolver los casos que aparezcan en pantalla; se indican la hoja, la fila y las celdas B (NUIP), C (nombres), D (apellidos) y F (nacimiento). Una persona anterior no se puede asignar dos veces.
+3. Pulsar **Ver consolidado**. Con **Editar** se pueden corregir los campos de identificación y ambas tomas; cada campo muestra su celda de origen. Las correcciones se aplican únicamente al archivo exportado y vuelven a ordenar el consolidado por primer nombre.
+4. Pulsar **Descargar Excel consolidado**. Incluye continuidades, nuevos ingresos y egresos, todos en orden alfabético y con hasta 20 registros en cada hoja institucional.
 
 ## Publicación en GitHub Pages
 
@@ -16,9 +17,9 @@ Crear un repositorio nuevo (público en GitHub Free). Subir **los archivos de es
 
 ## Reglas
 
-- Se leen todas las hojas excepto `Instrucciones` (también se reconoce la grafía `Instruccciones`), registros en filas 16–35 y campos A:AE. El nombre de las hojas de datos puede variar.
+- Se leen todas las hojas excepto `Instrucciones` (también se reconoce la grafía `Instruccciones`). En cada hoja se ubica la tabla por su encabezado `No. de orden` y sus filas 1–20; las notas y leyendas al pie se omiten. Por eso funcionan las plantillas cuyos niños comienzan en la fila 15 o 16. Los campos de niño son A:AE.
 - Coincidencia automática: NUIP único y nombres, apellidos y fecha de nacimiento presentes e iguales tras normalizar mayúsculas y espacios. Cualquier duda exige elección manual. La página propone candidatos por documento o identidad y muestra también todas las personas anteriores sin asignar.
-- Continuidad: conserva Toma 1 anterior; usa Toma 2 actual (T:AE) si viene diligenciada, o bien la medición actual (H:S) como Toma 2. Datos personales: toma los del archivo actual.
+- Continuidad: conserva Toma 1 anterior y **descarta todo lo que tenga la Toma 2 del archivo anterior**; usa Toma 2 actual (T:AE) si viene diligenciada, o bien la medición actual (H:S) como Toma 2. Datos personales: toma los del archivo actual.
 - Nuevo: datos y Toma 1 del archivo actual (H:S). Egreso: datos y Toma 1 del anterior; `EGRESO` en la fecha de Toma 2, columna T.
 - El resultado se ordena por el **primer nombre** (primera palabra de la columna NOMBRES); si coincide, se desempata con el nombre completo, los apellidos y el documento.
 - El formato de salida se basa en el archivo **actual**, conservando encabezados, estilos, instrucciones y el resto de la plantilla. Hojas de captura adicionales se crean automáticamente cuando son necesarias; las hojas vacías sobrantes se retiran. Los campos auxiliares fuera de A:AE no pasan al formato.

@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#173d3c">
   <title>Consolidador de tomas · Pardo Rubio</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="editing.css?v=20260923-3">
 </head>
 <body>
   <main class="wrap">
@@ -22,7 +23,7 @@
         <label class="drop"><span class="badge">TOMA ANTERIOR</span><strong>Archivo de partida</strong><span id="prev-name" class="file-label">Seleccionar Excel</span><input id="previous" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
         <label class="drop"><span class="badge">TOMA ACTUAL</span><strong>Archivo más reciente</strong><span id="curr-name" class="file-label">Seleccionar Excel</span><input id="current" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
       </div>
-      <p class="hint">Se leen todas las hojas excepto «Instrucciones», filas 16–35. Los registros sin identificación y los duplicados se revisan antes de exportar.</p>
+      <p class="hint">Se leen las filas de niños de todas las hojas excepto «Instrucciones». Las notas al pie se omiten y cada duda muestra su hoja, fila y celdas de origen.</p>
       <button id="process" class="primary" type="button">Comparar archivos <span aria-hidden="true">→</span></button>
       <div id="error" class="error" role="alert" hidden></div>
     </section>
@@ -37,14 +38,23 @@
     </section>
 
     <section id="output" class="panel" aria-labelledby="output-title" hidden>
-      <div class="section-head"><span class="step">03</span><div><h2 id="output-title">Consolidado listo</h2><p id="summary"></p></div></div>
-      <div class="table-scroll"><table><thead><tr><th>Estado</th><th>Niño o niña</th><th>Documento</th><th>Toma 1</th><th>Toma 2</th></tr></thead><tbody id="preview"></tbody></table></div>
+      <div class="section-head"><span class="step">03</span><div><h2 id="output-title">Revisar y corregir el consolidado</h2><p id="summary"></p></div></div>
+      <p class="hint">Pulsa «Editar» para corregir nombres, documento o cualquier dato de las tomas. Los cambios se aplican al Excel descargado.</p>
+      <div class="table-scroll"><table><thead><tr><th>Estado</th><th>Niño o niña</th><th>Documento</th><th>Toma 1</th><th>Toma 2</th><th>Origen</th><th></th></tr></thead><tbody id="preview"></tbody></table></div>
       <button id="download" class="primary" type="button">Descargar Excel consolidado <span aria-hidden="true">↓</span></button>
       <p class="hint">El archivo conserva el formato institucional y sus encabezados; cada hoja de captura contiene hasta 20 registros.</p>
     </section>
-    <footer>Consolidador de tomas · Versión 1.3 · Funciona sin conexión después de cargar la página.</footer>
+    <dialog id="edit-dialog" aria-labelledby="edit-title">
+      <form id="edit-form" autocomplete="off">
+        <div class="edit-head"><div><span class="badge">CORRECCIÓN ANTES DE EXPORTAR</span><h2 id="edit-title">Editar registro</h2><p id="edit-origin" class="hint"></p></div><button id="edit-cancel" type="button" class="close-button" aria-label="Cerrar">×</button></div>
+        <div id="edit-fields"></div>
+        <div id="edit-error" class="error" role="alert" hidden></div>
+        <div class="edit-actions"><button type="button" class="secondary" id="edit-dismiss">Cancelar</button><button type="submit" class="primary">Guardar cambios</button></div>
+      </form>
+    </dialog>
+    <footer>Consolidador de tomas · Versión 1.4 · Funciona sin conexión después de cargar la página.</footer>
   </main>
   <script src="vendor/jszip.min.js"></script>
-  <script type="module" src="app.js?v=20260923-2"></script>
+  <script type="module" src="app.js?v=20260923-3"></script>
 </body>
 </html>
